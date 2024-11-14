@@ -45,10 +45,10 @@ def extract_morphological_features(image):
 
     inverted_mask_morfologi = cv2.bitwise_not(mask_closing_citra)
 
-    # Calculate area, perimeter, and eccentricity from contours
+    
     contours, _ = cv2.findContours(inverted_mask_morfologi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if len(contours) == 0:
-        return 0, 0, 0  # Return 0 if no contours are found
+        return 0, 0, 0  
 
     cnt = contours[0]
     area = cv2.contourArea(cnt)
@@ -61,13 +61,13 @@ def extract_morphological_features(image):
 
     return inverted_mask_morfologi, area, perimeter, eccentricity
 
-# Fungsi untuk preprocess gambar dan ekstraksi fitur
+
 def process_image(image_path):
     img_rgb = cv2.imread(image_path)
     if img_rgb is None:
-        return None  # Jika gambar tidak dapat dibaca
+        return None  
 
-    # Konversi BGR ke RGB
+    
     img_rgb = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2RGB)
 
     citra_resized, masked_grayscale, inverted_mask_glcm, glcm_features = extract_glcm_features(img_rgb)
@@ -75,7 +75,7 @@ def process_image(image_path):
     
     return img_rgb, citra_resized, masked_grayscale, inverted_mask_morfologi, glcm_features + [area, perimeter, eccentricity]  # Kembalikan citra resized dan morph filled
 
-# Memproses semua gambar dalam folder untuk pelatihan model
+
 def process_folder(folder_path):
     features = []
     labels = []
@@ -85,18 +85,18 @@ def process_folder(folder_path):
             file_path = os.path.join(subdir, file)
             if file.endswith(('.png', '.jpg', '.jpeg')):
                 _, citra_resized, masked_grayscale, inverted_mask_morfologi, feature_data = process_image(file_path)
-                if feature_data is not None:  # Pastikan fitur tidak None
+                if feature_data is not None:  
                     features.append(feature_data)
                     labels.append(label)
     return features, labels
 
-# Fungsi untuk menyimpan model ke file pickle
+
 def save_model(model, file_path):
     with open(file_path, 'wb') as file:
         pickle.dump(model, file)
     st.success(f"Model berhasil disimpan ke {file_path}")
 
-# Fungsi untuk memuat model dari file pickle
+
 def load_model(file_path):
     if os.path.exists(file_path):
         with open(file_path, 'rb') as file:
@@ -105,12 +105,12 @@ def load_model(file_path):
     else:
         return None
 
-# Cek apakah file model pickle sudah ada
+
 model_rf = load_model(model_pickle_path) 
 if model_rf is None:
     st.warning(f"Tidak ditemukan model di {model_pickle_path}. Melatih model baru...")
 
-    # Menyiapkan data dan model
+    
     features, labels = process_folder(main_folder_path)
     if len(features) == 0:
         st.error("Tidak ada fitur yang dapat diekstraksi. Pastikan gambar dalam folder benar.")
@@ -130,27 +130,27 @@ if model_rf is None:
         # Simpan model ke file pickle
         save_model(model_rf, model_pickle_path)
 
-# Antarmuka Streamlit
+
 st.title("Klasifikasi Penyakit Pada Daun Mangga Berdasarkan Citra Penyakit Daun Mangga Menggunakan Random Forest")
 st.write("Silahkan unggah citra penyakit daun mangga :")
 
-# Mengunggah gambar
+
 uploaded_file = st.file_uploader("Silahkan memilih citra", type=['png', 'jpg', 'jpeg'])
 
 if uploaded_file is not None:
-    # Membaca dan memproses gambar yang diunggah
+    
     file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
     img_rgb = cv2.imdecode(file_bytes, 1)
 
-    # Konversi dari BGR ke RGB
+    
     img_rgb = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2RGB)
     
-    # Ekstraksi fitur dari gambar yang diunggah
+    
     citra_resized, masked_grayscale, inverted_mask_glcm, features_upload = extract_glcm_features(img_rgb)
     inverted_mask_morfologi, area, perimeter, eccentricity = extract_morphological_features(img_rgb)
     features_upload += [area, perimeter, eccentricity]
 
-    # Tampilkan ketiga citra hasil pemrosesan di Streamlit secara horizontal
+    
     st.write("### Citra Resize, Citra Grayscale, dan Citra Morfologi")
     col1, col2, col3 = st.columns(3)
 
@@ -163,14 +163,14 @@ if uploaded_file is not None:
     with col3:
         st.image(inverted_mask_morfologi, caption='Citra Hasil Morfologi', use_column_width=True)
 
-    if features_upload:  # Pastikan fitur dihasilkan
-        # Prediksi label
+    if features_upload:  
+        
         prediction = model_rf.predict([features_upload])
 
-        # Tampilkan hasil prediksi
+        
         st.write(f"### Hasil Klasifikasi: {prediction[0]}")
 
-        # Tampilkan tabel fitur
+       
         st.write("### Nilai Ekstraksi Fitur")
         feature_names = ['Contrast', 'Correlation', 'Energy', 'Homogeneity', 'Area', 'Perimeter', 'Eccentricity']
         features_df = pd.DataFrame([features_upload], columns=feature_names)
